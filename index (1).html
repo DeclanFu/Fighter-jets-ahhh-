@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FIGHTER JET DATABASE</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+    :root{
+      --bg:#050810;
+      --panel:#090d1a;
+      --border:#1a2a4a;
+      --accent:#00d4ff;
+      --accent2:#ff4d00;
+      --green:#00ff88;
+      --text:#c8d8f0;
+      --muted:#4a6080;
+      --glow:0 0 20px rgba(0,212,255,0.3);
+    }
+
+    body{
+      min-height:100vh;
+      background:var(--bg);
+      color:var(--text);
+      font-family:'Rajdhani',sans-serif;
+      font-weight:400;
+      overflow-x:hidden;
+      position:relative;
+    }
+
+    /* Grid background */
+    body::before{
+      content:'';
+      position:fixed;
+      inset:0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),
+        linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);
+      background-size:40px 40px;
+      pointer-events:none;
+      z-index:0;
+    }
+
+    /* Radar sweep animation in background */
+    .radar-bg{
+      position:fixed;
+      top:-300px;right:-300px;
+      width:700px;height:700px;
+      border-radius:50%;
+      background:conic-gradient(from 0deg, transparent 0deg, rgba(0,212,255,0.04) 30deg, transparent 60deg);
+      animation:sweep 8s linear infinite;
+      pointer-events:none;
+      z-index:0;
+    }
+    @keyframes sweep{to{transform:rotate(360deg);}}
+
+    .wrapper{
+      position:relative;z-index:1;
+      max-width:1000px;
+      margin:0 auto;
+      padding:2rem 1.5rem 4rem;
+    }
+
+    /* Header */
+    header{
+      text-align:center;
+      margin-bottom:2.5rem;
+      position:relative;
+    }
+
+    .header-line{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:1rem;
+      margin-bottom:0.4rem;
+    }
+
+    .header-line::before,.header-line::after{
+      content:'';
+      flex:1;
+      height:1px;
+      background:linear-gradient(90deg,transparent,var(--accent));
+    }
+    .header-line::after{background:linear-gradient(90deg,var(--accent),transparent);}
+
+    h1{
+      font-family:'Orbitron',monospace;
+      font-size:clamp(1.4rem,4vw,2.4rem);
+      font-weight:900;
+      color:var(--accent);
+      text-shadow:var(--glow);
+      letter-spacing:0.08em;
+      white-space:nowrap;
+    }
+
+    .subtitle{
+      font-size:0.85rem;
+      color:var(--muted);
+      letter-spacing:0.3em;
+      text-transform:uppercase;
+      margin-top:0.3rem;
+    }
+
+    /* Search bar */
+    .search-wrap{
+      position:relative;
+      margin-bottom:1.5rem;
+    }
+
+    .search-icon{
+      position:absolute;
+      left:1.2rem;top:50%;
+      transform:translateY(-50%);
+      font-size:1.1rem;
+      color:var(--accent);
+      pointer-events:none;
+    }
+
+    #searchInput{
+      width:100%;
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:4px;
+      padding:1rem 1rem 1rem 3rem;
+      color:var(--text);
+      font-family:'Rajdhani',sans-serif;
+      font-size:1.1rem;
+      font-weight:600;
+      letter-spacing:0.05em;
+      outline:none;
+      transition:border-color 0.2s,box-shadow 0.2s;
+    }
+    #searchInput:focus{border-color:var(--accent);box-shadow:var(--glow);}
+    #searchInput::placeholder{color:var(--muted);}
+
+    /* Filter pills */
+    .filters{
+      display:flex;
+      flex-wrap:wrap;
+      gap:0.5rem;
+      margin-bottom:2rem;
+    }
+
+    .pill{
+      font-family:'Orbitron',monospace;
+      font-size:0.62rem;
+      font-weight:700;
+      letter-spacing:0.1em;
+      padding:0.35rem 0.9rem;
+      border-radius:2px;
+      border:1px solid var(--border);
+      background:transparent;
+      color:var(--muted);
+      cursor:pointer;
+      transition:all 0.2s;
+      text-transform:uppercase;
+    }
+    .pill:hover{border-color:var(--accent);color:var(--accent);}
+    .pill.active{border-color:var(--accent);color:var(--bg);background:var(--accent);box-shadow:var(--glow);}
+
+    /* Results count */
+    .results-bar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:1rem;
+      font-size:0.75rem;
+      letter-spacing:0.15em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+
+    .results-bar span{color:var(--accent);font-family:'Orbitron',monospace;}
+
+    /* Grid */
+    .jet-grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(290px,1fr));
+      gap:1rem;
+    }
+
+    /* Jet card */
+    .jet-card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:4px;
+      padding:1.4rem;
+      cursor:pointer;
+      transition:border-color 0.2s,box-shadow 0.2s,transform 0.2s;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .jet-card::before{
+      content:'';
+      position:absolute;
+      top:0;left:0;right:0;
+      height:2px;
+      background:linear-gradient(90deg,transparent,var(--accent),transparent);
+      opacity:0;
+      transition:opacity 0.2s;
+    }
+
+    .jet-card:hover{
+      border-color:var(--accent);
+      box-shadow:var(--glow);
+      transform:translateY(-2px);
+    }
+    .jet-card:hover::before{opacity:1;}
+
+    .card-top{
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-start;
+      margin-bottom:0.8rem;
+    }
+
+    .jet-designation{
+      font-family:'Orbitron',monospace;
+      font-size:1.2rem;
+      font-weight:900;
+      color:var(--accent);
+      text-shadow:var(--glow);
+    }
+
+    .gen-badge{
+      font-family:'Orbitron',monospace;
+      font-size:0.6rem;
+      font-weight:700;
+      padding:0.2rem 0.5rem;
+      border-radius:2px;
+      letter-spacing:0.1em;
+    }
+
+    .gen-5{background:rgba(0,212,255,0.15);color:var(--accent);border:1px solid var(--accent);}
+    .gen-4{background:rgba(0,255,136,0.1);color:var(--green);border:1px solid var(--green);}
+    .gen-3{background:rgba(255,77,0,0.1);color:var(--accent2);border:1px solid var(--accent2);}
+    .gen-6{background:rgba(180,0,255,0.15);color:#c060ff;border:1px solid #c060ff;}
+
+    .jet-name{
+      font-size:1rem;
+      font-weight:600;
+      color:var(--text);
+      margin-bottom:0.3rem;
+    }
+
+    .jet-country{
+      font-size:0.78rem;
+      color:var(--muted);
+      letter-spacing:0.1em;
+      text-transform:uppercase;
+      margin-bottom:1rem;
+    }
+
+    .stats-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:0.5rem;
+      margin-bottom:1rem;
+    }
+
+    .stat{
+      background:rgba(0,212,255,0.04);
+      border:1px solid rgba(0,212,255,0.08);
+      border-radius:3px;
+      padding:0.4rem 0.6rem;
+    }
+
+    .stat-label{
+      font-size:0.6rem;
+      color:var(--muted);
+      letter-spacing:0.15em;
+      text-transform:uppercase;
+      margin-bottom:0.15rem;
+    }
+
+    .stat-value{
+      font-family:'Orbitron',monospace;
+      font-size:0.82rem;
+      font-weight:700;
+      color:var(--text);
+    }
+
+    .price-row{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      border-top:1px solid var(--border);
+      padding-top:0.8rem;
+      margin-top:0.2rem;
+    }
+
+    .price-label{
+      font-size:0.65rem;
+      color:var(--muted);
+      letter-spacing:0.15em;
+      text-transform:uppercase;
+    }
+
+    .price-value{
+      font-family:'Orbitron',monospace;
+      font-size:1rem;
+      font-weight:900;
+      color:var(--green);
+      text-shadow:0 0 12px rgba(0,255,136,0.4);
+    }
+
+    .role-tag{
+      font-size:0.65rem;
+      font-weight:600;
+      letter-spacing:0.1em;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin-bottom:0.8rem;
+    }
+
+    /* No results */
+    .no-results{
+      text-align:center;
+      padding:4rem 2rem;
+      color:var(--muted);
+      grid-column:1/-1;
+    }
+
+    .no-results .code{
+      font-family:'Orbitron',monospace;
+      font-size:3rem;
+      color:var(--border);
+      margin-bottom:1rem;
+    }
+
+    /* Modal overlay */
+    .modal-overlay{
+      position:fixed;inset:0;
+      background:rgba(0,0,0,0.85);
+      z-index:100;
+      display:flex;align-items:center;justify-content:center;
+      padding:1rem;
+      opacity:0;pointer-events:none;
+      transition:opacity 0.2s;
+    }
+    .modal-overlay.open{opacity:1;pointer-events:all;}
+
+    .modal{
+      background:var(--panel);
+      border:1px solid var(--accent);
+      box-shadow:0 0 60px rgba(0,212,255,0.2);
+      border-radius:6px;
+      max-width:620px;width:100%;
+      max-height:90vh;overflow-y:auto;
+      padding:2rem;
+      position:relative;
+      transform:translateY(20px);
+      transition:transform 0.2s;
+    }
+    .modal-overlay.open .modal{transform:translateY(0);}
+
+    .modal-close{
+      position:absolute;top:1rem;right:1rem;
+      background:none;border:1px solid var(--border);
+      color:var(--muted);font-size:1rem;
+      width:32px;height:32px;border-radius:3px;
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:all 0.2s;font-family:'Orbitron',monospace;
+    }
+    .modal-close:hover{border-color:var(--accent2);color:var(--accent2);}
+
+    .modal-designation{
+      font-family:'Orbitron',monospace;
+      font-size:2rem;font-weight:900;
+      color:var(--accent);text-shadow:var(--glow);
+      margin-bottom:0.2rem;
+    }
+
+    .modal-name{font-size:1.2rem;font-weight:600;margin-bottom:0.2rem;}
+    .modal-country{font-size:0.8rem;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:1.5rem;}
+
+    .modal-section{margin-bottom:1.5rem;}
+
+    .modal-section-title{
+      font-family:'Orbitron',monospace;
+      font-size:0.65rem;font-weight:700;
+      letter-spacing:0.2em;text-transform:uppercase;
+      color:var(--accent);
+      margin-bottom:0.75rem;
+      padding-bottom:0.4rem;
+      border-bottom:1px solid var(--border);
+    }
+
+    .modal-stats{
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+      gap:0.6rem;
+    }
+
+    .modal-stat{
+      background:rgba(0,212,255,0.04);
+      border:1px solid rgba(0,212,255,0.08);
+      border-radius:3px;padding:0.6rem 0.8rem;
+    }
+
+    .modal-stat-label{font-size:0.6rem;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;margin-bottom:0.2rem;}
+    .modal-stat-value{font-family:'Orbitron',monospace;font-size:0.88rem;font-weight:700;color:var(--text);}
+
+    .modal-desc{font-size:0.9rem;line-height:1.7;color:var(--text);font-weight:300;}
+
+    .modal-price-box{
+      background:rgba(0,255,136,0.05);
+      border:1px solid rgba(0,255,136,0.2);
+      border-radius:4px;
+      padding:1rem 1.2rem;
+      display:flex;justify-content:space-between;align-items:center;
+    }
+
+    .modal-price-label{font-size:0.7rem;color:var(--muted);letter-spacing:0.15em;text-transform:uppercase;}
+    .modal-price-value{font-family:'Orbitron',monospace;font-size:1.4rem;font-weight:900;color:var(--green);text-shadow:0 0 16px rgba(0,255,136,0.4);}
+    .modal-price-note{font-size:0.65rem;color:var(--muted);margin-top:0.2rem;}
+  </style>
+</head>
+<body>
+<div class="radar-bg"></div>
+<div class="wrapper">
+
+  <header>
+    <div class="header-line"><h1>⚡ FIGHTER JET DATABASE</h1></div>
+    <p class="subtitle">Military Aircraft Intelligence · Unit Cost Reference · Specs</p>
+  </header>
+
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search by designation, name, or country... (e.g. F-22, Typhoon, Russia)" />
+  </div>
+
+  <div class="filters">
+    <button class="pill active" data-filter="all">All</button>
+    <button class="pill" data-filter="USA">🇺🇸 USA</button>
+    <button class="pill" data-filter="Russia">🇷🇺 Russia</button>
+    <button class="pill" data-filter="China">🇨🇳 China</button>
+    <button class="pill" data-filter="Europe">🇪🇺 Europe</button>
+    <button class="pill" data-filter="Other">🌏 Other</button>
+    <button class="pill" data-filter="Gen 5">Gen 5</button>
+    <button class="pill" data-filter="Gen 4">Gen 4</button>
+  </div>
+
+  <div class="results-bar">
+    <div>SHOWING <span id="resultCount">0</span> AIRCRAFT</div>
+    <div>CLICK CARD FOR FULL SPECS</div>
+  </div>
+
+  <div class="jet-grid" id="jetGrid"></div>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <button class="modal-close" onclick="closeModalBtn()">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<script>
+const jets = [
+  {
+    designation:"F-22 Raptor",name:"Raptor",country:"USA",region:"USA",
+    gen:"Gen 5",role:"Air Superiority",manufacturer:"Lockheed Martin / Boeing",
+    introduced:2005,inService:186,
+    specs:{speed:"Mach 2.25",range:"2,960 km",ceiling:"65,000 ft",thrust:"2× 35,000 lbf",weight:"19,700 kg",crew:1},
+    price:"$143M",priceNote:"Unit flyaway cost (2009 USD)",
+    desc:"The F-22 Raptor is the world's premier air superiority fighter, combining stealth, supercruise, supermaneuverability and advanced avionics. Only 187 were built before production ended. Considered by many to be the most capable fighter ever produced."
+  },
+  {
+    designation:"F-35 Lightning II",name:"Lightning II",country:"USA",region:"USA",
+    gen:"Gen 5",role:"Multirole Strike",manufacturer:"Lockheed Martin",
+    introduced:2015,inService:900,
+    specs:{speed:"Mach 1.6",range:"2,800 km",ceiling:"50,000 ft",thrust:"1× 43,000 lbf",weight:"13,300 kg",crew:1},
+    price:"$80M",priceNote:"F-35A unit cost (2023 USD)",
+    desc:"The F-35 is a family of stealth multirole combat aircraft with three variants: conventional (A), STOVL (B), and carrier-based (C). It is the most widely produced 5th-generation fighter, operated by the US and 16 allied nations."
+  },
+  {
+    designation:"F-16 Fighting Falcon",name:"Fighting Falcon",country:"USA",region:"USA",
+    gen:"Gen 4",role:"Multirole",manufacturer:"General Dynamics / Lockheed Martin",
+    introduced:1978,inService:3000,
+    specs:{speed:"Mach 2.0",range:"4,220 km",ceiling:"50,000 ft",thrust:"1× 29,100 lbf",weight:"8,570 kg",crew:1},
+    price:"$30M",priceNote:"F-16C/D unit cost (2023 USD)",
+    desc:"The F-16 is one of the most successful and widely exported fighter jets ever built. Designed as a lightweight day fighter, it evolved into a highly capable multirole aircraft. Over 4,600 built, operated by 25+ nations."
+  },
+  {
+    designation:"F-15 Eagle",name:"Eagle",country:"USA",region:"USA",
+    gen:"Gen 4",role:"Air Superiority",manufacturer:"McDonnell Douglas / Boeing",
+    introduced:1976,inService:450,
+    specs:{speed:"Mach 2.5+",range:"5,550 km",ceiling:"65,000 ft",thrust:"2× 23,770 lbf",weight:"12,700 kg",crew:"1–2"},
+    price:"$108M",priceNote:"F-15EX unit cost (2023 USD)",
+    desc:"The F-15 Eagle has a perfect air combat record with over 100 aerial victories and zero losses. The F-15EX Eagle II is the latest variant, still in production. The F-15E Strike Eagle is a powerful two-seat strike variant."
+  },
+  {
+    designation:"F/A-18 Super Hornet",name:"Super Hornet",country:"USA",region:"USA",
+    gen:"Gen 4",role:"Carrier Multirole",manufacturer:"Boeing",
+    introduced:1999,inService:500,
+    specs:{speed:"Mach 1.8",range:"2,346 km",ceiling:"50,000 ft",thrust:"2× 22,000 lbf",weight:"14,552 kg",crew:"1–2"},
+    price:"$67M",priceNote:"Unit flyaway cost (2023 USD)",
+    desc:"The Super Hornet is the US Navy's primary carrier-based fighter, replacing the F-14 Tomcat. Larger and more capable than the original Hornet, it serves in both fighter and attack roles. Also operated by Australia."
+  },
+  {
+    designation:"Su-57 Felon",name:"Felon",country:"Russia",region:"Russia",
+    gen:"Gen 5",role:"Multirole",manufacturer:"Sukhoi",
+    introduced:2020,inService:22,
+    specs:{speed:"Mach 2.0",range:"3,500 km",ceiling:"66,000 ft",thrust:"2× 33,000 lbf",weight:"18,000 kg",crew:1},
+    price:"$35M",priceNote:"Estimated unit cost (2023 USD)",
+    desc:"Russia's first and only 5th-generation stealth fighter. The Su-57 features internal weapons bays, advanced avionics, and supermaneuverability. Production has been slow with limited numbers delivered to the Russian Air Force."
+  },
+  {
+    designation:"Su-35 Flanker-E",name:"Flanker-E",country:"Russia",region:"Russia",
+    gen:"Gen 4",role:"Air Superiority",manufacturer:"Sukhoi",
+    introduced:2014,inService:140,
+    specs:{speed:"Mach 2.25",range:"3,600 km",ceiling:"59,000 ft",thrust:"2× 31,900 lbf",weight:"18,400 kg",crew:1},
+    price:"$85M",priceNote:"Estimated export unit cost",
+    desc:"The Su-35 is a highly capable 4++ generation fighter featuring thrust-vectoring engines and advanced avionics. It is considered one of the most maneuverable fighters in the world. Operated by Russia, China, and exported to Egypt."
+  },
+  {
+    designation:"MiG-29 Fulcrum",name:"Fulcrum",country:"Russia",region:"Russia",
+    gen:"Gen 4",role:"Air Superiority",manufacturer:"Mikoyan",
+    introduced:1983,inService:800,
+    specs:{speed:"Mach 2.25",range:"2,100 km",ceiling:"59,000 ft",thrust:"2× 18,300 lbf",weight:"10,900 kg",crew:1},
+    price:"$29M",priceNote:"Estimated unit cost",
+    desc:"The MiG-29 is a Soviet-era frontline fighter widely exported across the world. Though aging, it remains in active service with many nations. Multiple upgraded variants exist including the MiG-29SMT and naval MiG-29K."
+  },
+  {
+    designation:"Su-27 Flanker",name:"Flanker",country:"Russia",region:"Russia",
+    gen:"Gen 4",role:"Air Superiority",manufacturer:"Sukhoi",
+    introduced:1985,inService:350,
+    specs:{speed:"Mach 2.35",range:"3,530 km",ceiling:"62,000 ft",thrust:"2× 27,560 lbf",weight:"16,380 kg",crew:1},
+    price:"$30M",priceNote:"Estimated unit cost",
+    desc:"The Su-27 is the backbone of Soviet/Russian air power and the basis for a huge family of derivatives including the Su-30, Su-33, Su-34, and Su-35. Renowned for its Pugachev's Cobra maneuver and high agility."
+  },
+  {
+    designation:"J-20 Mighty Dragon",name:"Mighty Dragon",country:"China",region:"China",
+    gen:"Gen 5",role:"Stealth Multirole",manufacturer:"Chengdu Aircraft",
+    introduced:2017,inService:200,
+    specs:{speed:"Mach 2.0+",range:"2,000+ km",ceiling:"66,000 ft",thrust:"2× 33,000 lbf (est)",weight:"19,391 kg",crew:1},
+    price:"$110M",priceNote:"Estimated unit cost (USD)",
+    desc:"China's first operational 5th-generation stealth fighter. The J-20 features a distinctive large frame with canards and internal weapons bays. Designed primarily for long-range strike and air superiority missions against US carrier groups."
+  },
+  {
+    designation:"J-10 Vigorous Dragon",name:"Vigorous Dragon",country:"China",region:"China",
+    gen:"Gen 4",role:"Multirole",manufacturer:"Chengdu Aircraft",
+    introduced:2004,inService:500,
+    specs:{speed:"Mach 2.0",range:"3,900 km",ceiling:"59,000 ft",thrust:"1× 27,558 lbf",weight:"9,750 kg",crew:1},
+    price:"$28M",priceNote:"Estimated unit cost (USD)",
+    desc:"The J-10 is China's indigenous single-engine multirole fighter, developed as a competitor to the F-16. The latest J-10C variant features AESA radar and the WS-10B engine. Exported to Pakistan as the J-10CE."
+  },
+  {
+    designation:"Eurofighter Typhoon",name:"Typhoon",country:"UK/Germany/Italy/Spain",region:"Europe",
+    gen:"Gen 4",role:"Multirole",manufacturer:"Eurofighter GmbH",
+    introduced:2003,inService:570,
+    specs:{speed:"Mach 2.0",range:"2,900 km",ceiling:"65,000 ft",thrust:"2× 20,000 lbf",weight:"11,000 kg",crew:"1–2"},
+    price:"$124M",priceNote:"Unit flyaway cost (2023 USD)",
+    desc:"The Eurofighter Typhoon is a highly agile twin-engine canard-delta multirole fighter developed by a consortium of European nations. It is considered one of the most capable air-to-air fighters in the world, operated by 9 nations."
+  },
+  {
+    designation:"Dassault Rafale",name:"Rafale",country:"France",region:"Europe",
+    gen:"Gen 4",role:"Omnirole",manufacturer:"Dassault Aviation",
+    introduced:2001,inService:235,
+    specs:{speed:"Mach 1.8",range:"3,700 km",ceiling:"50,000 ft",thrust:"2× 17,000 lbf",weight:"9,500 kg",crew:"1–2"},
+    price:"$115M",priceNote:"Unit flyaway cost (2023 USD)",
+    desc:"The Rafale is France's premier combat aircraft and the only omnirole fighter, capable of air superiority, ground attack, nuclear strike, reconnaissance and carrier operations with the same aircraft. A major export success in recent years."
+  },
+  {
+    designation:"JAS 39 Gripen",name:"Gripen",country:"Sweden",region:"Europe",
+    gen:"Gen 4",role:"Multirole",manufacturer:"Saab",
+    introduced:1997,inService:270,
+    specs:{speed:"Mach 2.0",range:"3,000 km",ceiling:"50,000 ft",thrust:"1× 18,100 lbf",weight:"6,800 kg",crew:"1–2"},
+    price:"$85M",priceNote:"Gripen E unit cost (2023 USD)",
+    desc:"The Gripen is a lightweight, agile multirole fighter famous for low operating costs and ease of maintenance. It can operate from roads and is loved for its affordability and advanced avionics. Operated by Sweden, Brazil, and 8 other nations."
+  },
+  {
+    designation:"F-2 Viper Zero",name:"Viper Zero",country:"Japan",region:"Other",
+    gen:"Gen 4",role:"Multirole",manufacturer:"Mitsubishi / Lockheed Martin",
+    introduced:2000,inService:94,
+    specs:{speed:"Mach 2.0",range:"834 km",ceiling:"59,000 ft",thrust:"1× 29,500 lbf",weight:"9,527 kg",crew:"1–2"},
+    price:"$127M",priceNote:"Unit cost (high due to small production run)",
+    desc:"The F-2 is a Japanese multirole fighter developed jointly with the US, based on the F-16. Featuring a larger wing and Japanese-developed avionics, it serves as Japan's primary anti-ship aircraft. Production ended in 2011."
+  },
+  {
+    designation:"HAL Tejas",name:"Tejas",country:"India",region:"Other",
+    gen:"Gen 4",role:"Multirole",manufacturer:"HAL",
+    introduced:2016,inService:45,
+    specs:{speed:"Mach 1.8",range:"3,000 km",ceiling:"50,000 ft",thrust:"1× 19,000 lbf",weight:"6,500 kg",crew:1},
+    price:"$33M",priceNote:"Estimated unit cost (USD)",
+    desc:"India's indigenous lightweight multirole fighter, developed by HAL over several decades. The Tejas Mk1A is the current production variant with AESA radar. India plans to order 83 Mk1A aircraft and develop the more capable Tejas Mk2."
+  },
+  {
+    designation:"KF-21 Boramae",name:"Boramae",country:"South Korea",region:"Other",
+    gen:"Gen 4",role:"Multirole",manufacturer:"KAI",
+    introduced:2026,inService:0,
+    specs:{speed:"Mach 1.8",range:"2,900 km",ceiling:"50,000 ft",thrust:"2× 22,000 lbf",weight:"12,300 kg",crew:"1–2"},
+    price:"$65M",priceNote:"Estimated unit cost (USD)",
+    desc:"South Korea's new domestically developed 4.5-generation fighter developed in partnership with Indonesia. Currently in test flights with serial production expected soon. Designed to eventually replace aging F-4s and F-5s in Korean service."
+  },
+  {
+    designation:"F-117 Nighthawk",name:"Nighthawk",country:"USA",region:"USA",
+    gen:"Gen 3",role:"Stealth Strike",manufacturer:"Lockheed Skunk Works",
+    introduced:1983,inService:0,
+    specs:{speed:"High Subsonic",range:"1,720 km",ceiling:"45,000 ft",thrust:"2× 10,800 lbf",weight:"10,400 kg",crew:1},
+    price:"$111M",priceNote:"Unit cost (1997 USD) — retired 2008",
+    desc:"The world's first operational stealth aircraft. The F-117's faceted angular design was revolutionary, enabling it to evade radar detection. Used in Panama, Gulf War, Yugoslavia, and Iraq. Officially retired in 2008, though some remain in storage."
+  },
+  {
+    designation:"B-2 Spirit",name:"Spirit",country:"USA",region:"USA",
+    gen:"Gen 5",role:"Strategic Stealth Bomber",manufacturer:"Northrop Grumman",
+    introduced:1997,inService:20,
+    specs:{speed:"High Subsonic",range:"11,000 km",ceiling:"50,000 ft",thrust:"4× 17,300 lbf",weight:"71,668 kg",crew:2},
+    price:"$2.1B",priceNote:"Unit cost per aircraft (most expensive ever)",
+    desc:"The B-2 Spirit is the world's most expensive military aircraft ever built. This flying-wing stealth strategic bomber can deliver both conventional and nuclear weapons anywhere in the world without refueling. Only 20 were built."
+  },
+  {
+    designation:"A-10 Thunderbolt II",name:"Warthog",country:"USA",region:"USA",
+    gen:"Gen 3",role:"Close Air Support",manufacturer:"Fairchild Republic",
+    introduced:1977,inService:281,
+    specs:{speed:"706 km/h",range:"800 km",ceiling:"45,000 ft",thrust:"2× 9,065 lbf",weight:"11,321 kg",crew:1},
+    price:"$18M",priceNote:"Unit cost (1994 USD)",
+    desc:"The A-10 Thunderbolt II, nicknamed the Warthog, is a legendary close air support aircraft built around the massive GAU-8 Avenger 30mm Gatling cannon. Beloved by ground troops for its ability to survive extreme damage and loiter over the battlefield."
+  },
+];
+
+let activeFilter = 'all';
+let searchTerm = '';
+
+function getGenClass(gen){
+  if(gen==='Gen 5') return 'gen-5';
+  if(gen==='Gen 4') return 'gen-4';
+  if(gen==='Gen 6') return 'gen-6';
+  return 'gen-3';
+}
+
+function filterJets(){
+  return jets.filter(j=>{
+    const s = searchTerm.toLowerCase();
+    const matchSearch = !s ||
+      j.designation.toLowerCase().includes(s) ||
+      j.name.toLowerCase().includes(s) ||
+      j.country.toLowerCase().includes(s) ||
+      j.role.toLowerCase().includes(s) ||
+      j.manufacturer.toLowerCase().includes(s);
+
+    const matchFilter = activeFilter==='all' ||
+      j.region===activeFilter ||
+      j.gen===activeFilter;
+
+    return matchSearch && matchFilter;
+  });
+}
+
+function renderCards(){
+  const filtered = filterJets();
+  const grid = document.getElementById('jetGrid');
+  document.getElementById('resultCount').textContent = filtered.length;
+
+  if(!filtered.length){
+    grid.innerHTML = `<div class="no-results"><div class="code">404</div><div>NO AIRCRAFT FOUND</div></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map((j,i)=>`
+    <div class="jet-card" onclick="openModal(${jets.indexOf(j)})">
+      <div class="card-top">
+        <div class="jet-designation">${j.designation.split(' ')[0]}</div>
+        <div class="gen-badge ${getGenClass(j.gen)}">${j.gen}</div>
+      </div>
+      <div class="jet-name">${j.designation}</div>
+      <div class="jet-country">🌐 ${j.country}</div>
+      <div class="role-tag">▸ ${j.role}</div>
+      <div class="stats-row">
+        <div class="stat"><div class="stat-label">Top Speed</div><div class="stat-value">${j.specs.speed}</div></div>
+        <div class="stat"><div class="stat-label">Range</div><div class="stat-value">${j.specs.range}</div></div>
+      </div>
+      <div class="price-row">
+        <div><div class="price-label">Est. Unit Cost</div></div>
+        <div class="price-value">${j.price}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function openModal(idx){
+  const j = jets[idx];
+  document.getElementById('modalContent').innerHTML = `
+    <div class="modal-designation">${j.designation}</div>
+    <div class="modal-name">${j.name} · ${j.role}</div>
+    <div class="modal-country">🌐 ${j.country} · ${j.manufacturer} · Introduced ${j.introduced}</div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">Performance Specs</div>
+      <div class="modal-stats">
+        ${Object.entries(j.specs).map(([k,v])=>`
+          <div class="modal-stat">
+            <div class="modal-stat-label">${k}</div>
+            <div class="modal-stat-value">${v}</div>
+          </div>
+        `).join('')}
+        <div class="modal-stat">
+          <div class="modal-stat-label">Generation</div>
+          <div class="modal-stat-value">${j.gen}</div>
+        </div>
+        <div class="modal-stat">
+          <div class="modal-stat-label">In Service</div>
+          <div class="modal-stat-value">${j.inService > 0 ? j.inService+'+' : 'Retired'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-title">Overview</div>
+      <div class="modal-desc">${j.desc}</div>
+    </div>
+
+    <div class="modal-price-box">
+      <div>
+        <div class="modal-price-label">Estimated Unit Cost</div>
+        <div class="modal-price-note">${j.priceNote}</div>
+      </div>
+      <div class="modal-price-value">${j.price}</div>
+    </div>
+  `;
+  document.getElementById('modalOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function closeModal(e){
+  if(e.target===document.getElementById('modalOverlay')) closeModalBtn();
+}
+
+function closeModalBtn(){
+  document.getElementById('modalOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+document.getElementById('searchInput').addEventListener('input',e=>{
+  searchTerm=e.target.value;
+  renderCards();
+});
+
+document.querySelectorAll('.pill').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.pill').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    activeFilter=btn.dataset.filter;
+    renderCards();
+  });
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeModalBtn();
+});
+
+renderCards();
+</script>
+</body>
+</html>
